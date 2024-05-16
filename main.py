@@ -1,12 +1,14 @@
 import sys
 import subprocess
 import serial.tools.list_ports
+import time
 from PySide6.QtCore import QRegularExpression, QUrl, QTimer
 from PySide6.QtGui import QRegularExpressionValidator, QColor, QDesktopServices
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QLineEdit, QComboBox, QLabel, QHBoxLayout, QTextEdit
+from PySide6.QtGui import QIcon
 
 
-meshTw_url = "https://meshtastic.org/e/#CgMSAQEKNxIgisDhHrNpJPlGX3GBJBX6kjuK7KQNp4Z0M7OTDpnX5N4aBk1lc2hUVyUBAAAAKAEwAToCCBAKNhIgy1HciVgpl5Hzh05KJUe_umWUH8XhG3UjR1rvZHfUHFUaClNpZ25hbFRlc3QoATABOgIIIAo2EiDLaOd_zp9Ol__gAUB_6YLBvNGjGkJXQ_3R2omjT7D9JhoKRW1lcmdlbmN5ISgBMAE6AgggEg4IATgIQANIAVARWBBoAQ"
+meshTw_url = "https://meshtastic.org/e/#CgUSAQEoAQo3EiCKwOEes2kk-UZfcYEkFfqSO4rspA2nhnQzs5MOmdfk3hoGTWVzaFRXJQEAAAAoATABOgIIEAo2EiDLUdyJWCmXkfOHTkolR7-6ZZQfxeEbdSNHWu9kd9QcVRoKU2lnbmFsVGVzdCgBMAE6AgggCjYSIMto53_On06X_-ABQH_pgsG80aMaQldD_dHaiaNPsP0mGgpFbWVyZ2VuY3khKAEwAToCCCASDggBOAhAA0gBUBFYEGgB"
 
 class MeshtasticConfigurator(QMainWindow):
     def __init__(self):
@@ -32,6 +34,9 @@ class MeshtasticConfigurator(QMainWindow):
         btn_refresh.clicked.connect(self.refresh_ports)
         port_layout.addWidget(btn_refresh)
         layout.addLayout(port_layout)
+
+        # 載入圖標並設置
+        self.setWindowIcon(QIcon('./icon.ico'))
 
         # Connect the signal to check_version
         self.combo_ports.currentIndexChanged.connect(self.check_version)
@@ -90,9 +95,23 @@ class MeshtasticConfigurator(QMainWindow):
             '--set', 'mqtt.enabled', 'true',
             '--set', 'mqtt.proxy_to_client_enabled', 'true',
             '--set', 'mqtt.map_reporting_enabled', 'true',
-            '--seturl', meshTw_url,
             '--port', selected_port,
-            '--set', 'lora.txPower', '20'
+            '--set', 'lora.txPower', '20',
+            '--seturl', meshTw_url
+
+        ]
+        try:
+            result = subprocess.run(command, capture_output=True, text=True, check=True)
+            self.status_text.setTextColor(QColor("green"))
+            self.status_text.setText(f"Successfully set names and port: {long_name}, {short_name}, {selected_port}\n{result.stdout}")
+        except subprocess.CalledProcessError as e:
+            self.status_text.setTextColor(QColor("red"))
+            self.status_text.setText(f"An error occurred: {e}\nFailed command: {' '.join(command)}")
+        time.sleep(3)
+        command = [
+            'meshtastic',
+            '--port', selected_port,
+            '--seturl', meshTw_url
         ]
         try:
             result = subprocess.run(command, capture_output=True, text=True, check=True)
@@ -122,6 +141,8 @@ class MeshtasticConfigurator(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon('./icon.png'))  # Optionally set the app icon
+
     ex = MeshtasticConfigurator()
     ex.show()
     sys.exit(app.exec())
